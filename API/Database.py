@@ -8,6 +8,7 @@ conf={
     'host':os.environ.get('host'),
     'database': os.environ.get('database'),
     'user':os.environ.get('user'),
+    'port':os.environ.get('port'),
     'password':os.environ.get('password')
 }
 
