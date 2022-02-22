@@ -15,89 +15,96 @@ class BaseClass:
     def InsertProductByURL(self, URL):
         storeProductId=self.GetProductId(URL)
         
-        #check from directories.Product is product exist in DB
-        #should implement -
-
-        response=self.GetProductDataByID(storeProductId)
-        product=[]
-        img=[]
-
-        if response:
-            if 'brand' in response:
-                if 'name' in response['brand']:
-                    responseBrandName=response['brand']['name']
-                    brandId=self.GetBrandIdByTitle(responseBrandName)
-
-                    product.append(('bid', brandId))
-                else:
-                    #not implemented. If brand not found should do something
-                    #logg and deicde write or not
-                    pass
-            
-            if 'category' in response:
-                if 'name' in response['category']:
-                    responseCategoryName=response['category']['name']
-                    categoryId=self.GetCategoryIdByTitle(responseCategoryName)
-                    
-                    product.append(('cid', categoryId))
-                else:
-                    #not implemented. If category not found should do something
-                    #logg and deicde write or not
-                    pass
-            
-            if 'contentDescriptions' in response:
-                descriptions=[]
-                for d in response['contentDescriptions']:
-                    descriptions.append(d['description'])
-                
-                product.append(('description', descriptions))
-            
-            if 'name' in response:
-                name=response['name']
-                product.append(('title', name))
-            
-            if 'id' in response:
-                storeId=response['id']
-                product.append(('storeId', storeId))
-            
-            product.append(('url', URL))
-
-            productId=self.db.InsertValuesToTable('product', product)
+        #check if product already exists in db
+        productExists=self.db.CheckProductByStoreId(storeProductId)
         
-            #insert values directly to images table with pid(product id)
-            if 'images' in response:
-                for link in response['images']:
-                    imageLink=self.trendy_image_prefix.format(link)
-                    img.append(imageLink)
-                    self.db.InsertValuesToTable('images', [('pid', productId),('url', imageLink)])
+        if productExists:
+            product=self.db.GetProductByStoreId(storeProductId)
+            images=self.db.GetImagesByProductIdx(product['idx'])
+            img=[r['url'] for r in images]
+
+            return product['idx'], storeProductId, img
+        else:
+            product=[]
+            img=[]
+            response=self.GetProductDataByID(storeProductId)
+     
+            if response:
+                if 'brand' in response:
+                    if 'name' in response['brand']:
+                        responseBrandName=response['brand']['name']
+                        brandId=self.GetBrandIdByTitle(responseBrandName)
+
+                        product.append(('bid', brandId))
+                    else:
+                        #not implemented. If brand not found should do something
+                        #logg and deicde write or not
+                        pass
+                
+                if 'category' in response:
+                    if 'name' in response['category']:
+                        responseCategoryName=response['category']['name']
+                        categoryId=self.GetCategoryIdByTitle(responseCategoryName)
+                        
+                        product.append(('cid', categoryId))
+                    else:
+                        #not implemented. If category not found should do something
+                        #logg and deicde write or not
+                        pass
+                
+                if 'contentDescriptions' in response:
+                    descriptions=[]
+                    for d in response['contentDescriptions']:
+                        descriptions.append(d['description'])
+                    
+                    product.append(('description', descriptions))
+                
+                if 'name' in response:
+                    name=response['name']
+                    product.append(('title', name))
+                
+                if 'id' in response:
+                    storeId=response['id']
+                    product.append(('storeId', storeId))
+                
+                product.append(('url', URL))
+
+                productId=self.db.InsertValuesToTable('product', product)
             
-            if 'variants' in response:
-                for variant in response['variants']:
-                    v=[('pid',productId)]
-                    v.append(('currency', 'TL'))
-                    if 'attributeName' in variant:
-                        v.append(('attributeName', variant['attributeName']))
-                    
-                    if 'attributeType' in variant:
-                        v.append(('attributeType', variant['attributeType']))
-                    
-                    if 'attributeValue' in variant:
-                        v.append(('attributeValue', variant['attributeValue']))
+                #insert values directly to images table with pid(product id)
+                if 'images' in response:
+                    for link in response['images']:
+                        imageLink=self.trendy_image_prefix.format(link)
+                        img.append(imageLink)
+                        self.db.InsertValuesToTable('images', [('pid', productId),('url', imageLink)])
+                
+                if 'variants' in response:
+                    for variant in response['variants']:
+                        v=[('pid',productId)]
+                        v.append(('currency', 'TL'))
+                        if 'attributeName' in variant:
+                            v.append(('attributeName', variant['attributeName']))
+                        
+                        if 'attributeType' in variant:
+                            v.append(('attributeType', variant['attributeType']))
+                        
+                        if 'attributeValue' in variant:
+                            v.append(('attributeValue', variant['attributeValue']))
 
-                    if 'price' in variant:
-                        if 'discountedPrice' in variant['price']:
-                            v.append(('discountedPrice', variant['price']['discountedPrice']['value']))
+                        if 'price' in variant:
+                            if 'discountedPrice' in variant['price']:
+                                v.append(('discountedPrice', variant['price']['discountedPrice']['value']))
 
-                        if 'sellingPrice' in variant['price']:
-                            v.append(('sellingPrice', variant['price']['sellingPrice']['value']))
+                            if 'sellingPrice' in variant['price']:
+                                v.append(('sellingPrice', variant['price']['sellingPrice']['value']))
 
-                        if 'originalPrice' in variant['price']:
-                            v.append(('originalPrice', variant['price']['originalPrice']['value']))
+                            if 'originalPrice' in variant['price']:
+                                v.append(('originalPrice', variant['price']['originalPrice']['value']))
 
-                        self.db.InsertValuesToTable('variants', v)
+                            self.db.InsertValuesToTable('variants', v)
 
-                    #directories.GetProducts()
-                    return productId, storeProductId, img 
+                        #directories.GetProducts()
+                        return productId, storeProductId, img 
 
     def GetProductDataByID(self, productId):
         response=requests.get(self.trendyol_url.format(productId))
@@ -155,6 +162,5 @@ class BaseClass:
 if __name__=='__main__':
     base = BaseClass()
     directories.init()
-    print(base.GetBrandIdByTitle('Puma'))
-    #response = base.InsertProductByURL('https://ty.gl/us3uc0gtcq')
-    #print(response)
+    response = base.InsertProductByURL('https://ty.gl/us3uc0gtcq')
+    print(response)
