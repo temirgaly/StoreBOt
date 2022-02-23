@@ -1,3 +1,4 @@
+from ast import Try
 import os
 import logging
 import directories
@@ -36,7 +37,10 @@ def echo(update: Update, context: CallbackContext) -> None:
         response=helper.InsertProductByURL(update.message.text)
         
         for url in response[2]:
-            update.message.reply_photo(photo=url)
+            try:
+                update.message.reply_photo(photo=url)
+            except Exception as e:
+                print(e)
         
         update.message.reply_text('Код: {}'.format(response[1]))
     else:
